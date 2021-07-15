@@ -1,0 +1,5 @@
+package currencydb
+
+func init() {
+
+}
