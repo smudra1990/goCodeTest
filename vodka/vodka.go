@@ -126,7 +126,7 @@ func handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 func getRoute(r *http.Request) *Route {
 	for _, p := range routeTable {
-		re := regexp.MustCompile(p.path)
+		re := regexp.MustCompile("(?i)" + p.path)
 		if re.MatchString(r.RequestURI) == true {
 			route := routeTable[p.path]
 			if route.method == r.Method {

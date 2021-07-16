@@ -2,13 +2,13 @@ package domain
 
 // Currency struct
 type Currency struct {
-	ID          string  `json:"id"`
-	FullName    string  `json:"full_name"`
-	Aslk        float64 `json:"aslk"`
-	Bid         float64 `json:"bid"`
-	Last        float64 `json:"last"`
-	Open        float64 `json:"open"`
-	Low         float64 `json:"low"`
-	High        float64 `json:"high"`
-	FeeCurrency string  `json:"fee_currency"`
+	ID          string `json:"id,omitempty"`
+	FullName    string `json:"full_name,omitempty"`
+	Ask         string `json:"ask,omitempty"`
+	Bid         string `json:"bid,omitempty"`
+	Last        string `json:"last,omitempty"`
+	Open        string `json:"open,omitempty"`
+	Low         string `json:"low,omitempty"`
+	High        string `json:"high,omitempty"`
+	FeeCurrency string `json:"fee_currency,omitempty"`
 }

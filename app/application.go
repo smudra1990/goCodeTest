@@ -17,13 +17,11 @@ func init() {
 
 //StartApplication will prepare all configuration and start http server
 func StartApplication() {
-
-	//datasource.InitWebsocket(config)
 	mapUrls()
 	router.Run(config.HTTPServerPort)
 }
 
 func mapUrls() {
-	router.GET("/currency/{symbol}", controllers.Get)
 	router.GET("/currency/all", controllers.GetAll)
+	router.GET("/currency/{symbol}", controllers.Get)
 }

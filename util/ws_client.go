@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"sync"
@@ -13,6 +12,12 @@ import (
 
 // Send pings to peer with this period
 const pingPeriod = 30 * time.Second
+
+//MessageChannel is used to channel data from websocket listner.
+type MessageChannel struct {
+	MessageType int
+	Data        []byte
+}
 
 // WebSocketClient return websocket client connection
 type WebSocketClient struct {
@@ -26,16 +31,16 @@ type WebSocketClient struct {
 }
 
 // NewWebSocketClient create new websocket connection
-func NewWebSocketClient(scheme string, host, channel string) (*WebSocketClient, error) {
+func NewWebSocketClient(scheme string, host, path string, message chan MessageChannel) (*WebSocketClient, error) {
 	conn := WebSocketClient{
 		sendBuf: make(chan []byte, 1),
 	}
 	conn.ctx, conn.ctxCancel = context.WithCancel(context.Background())
 
-	u := url.URL{Scheme: scheme, Host: host, Path: channel}
+	u := url.URL{Scheme: scheme, Host: host, Path: path}
 	conn.configStr = u.String()
 
-	go conn.listen()
+	go conn.listen(message)
 	return &conn, nil
 }
 
@@ -66,8 +71,38 @@ func (conn *WebSocketClient) Connect() *websocket.Conn {
 	}
 }
 
-func (conn *WebSocketClient) listen() {
+func (conn *WebSocketClient) listen(message chan MessageChannel) {
 	conn.log("listen", nil, fmt.Sprintf("listen for the messages: %s", conn.configStr))
+	ws := conn.Connect()
+	if ws == nil {
+		return
+	}
+	tickerMessage := struct {
+		Method string `json:"method"`
+		ID     int    `json:"id"`
+		Params struct {
+			Symbol   string `json:"symbol"`
+			Currency string `json:"currency"`
+		} `json:"params"`
+	}{}
+	tickerMessage.ID = 101
+	// Get symbol details
+	tickerMessage.Method = "getCurrency"
+	tickerMessage.Params.Currency = "ETH"
+	conn.wsconn.WriteJSON(tickerMessage)
+	tickerMessage.Params.Currency = "BTC"
+	conn.wsconn.WriteJSON(tickerMessage)
+
+	//Subscribe Ticker
+	tickerMessage.ID = 102
+	tickerMessage.Method = "subscribeTicker"
+	tickerMessage.Params.Symbol = "ETHBTC"
+	conn.wsconn.WriteJSON(tickerMessage)
+	tickerMessage.Params.Symbol = "BTCUSD"
+	conn.wsconn.WriteJSON(tickerMessage)
+
+	conn.wsconn.WriteJSON(tickerMessage)
+
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
@@ -76,57 +111,21 @@ func (conn *WebSocketClient) listen() {
 			return
 		case <-ticker.C:
 			for {
-				ws := conn.Connect()
-				if ws == nil {
-					return
-				}
-				_, bytMsg, err := ws.ReadMessage()
+
+				mType, bytMsg, err := ws.ReadMessage()
 				if err != nil {
 					conn.log("listen", err, "Cannot read websocket message")
 					conn.closeWs()
 					break
 				}
-				conn.log("listen", nil, fmt.Sprintf("websocket msg: %x\n", bytMsg))
+				m := MessageChannel{
+					MessageType: mType,
+					Data:        bytMsg,
+				}
+				message <- m
+				//conn.log("listen", nil, fmt.Sprintf("websocket msg: %x\n", bytMsg))
 			}
 		}
-	}
-}
-
-// Write data to the websocket server
-func (conn *WebSocketClient) Write(payload interface{}) error {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
-	defer cancel()
-
-	for {
-		select {
-		case conn.sendBuf <- data:
-			return nil
-		case <-ctx.Done():
-			return fmt.Errorf("context canceled")
-		}
-	}
-}
-
-func (conn *WebSocketClient) listenWrite() {
-	for data := range conn.sendBuf {
-		ws := conn.Connect()
-		if ws == nil {
-			err := fmt.Errorf("conn.ws is nil")
-			conn.log("listenWrite", err, "No websocket connection")
-			continue
-		}
-
-		if err := ws.WriteMessage(
-			websocket.TextMessage,
-			data,
-		); err != nil {
-			conn.log("listenWrite", nil, "WebSocket Write Error")
-		}
-		conn.log("listenWrite", nil, fmt.Sprintf("send: %s", data))
 	}
 }
 
