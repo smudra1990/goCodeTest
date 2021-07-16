@@ -1,6 +1,6 @@
-package domain
+package currencydb
 
-// Currency struct
+// Currency DAO
 type Currency struct {
 	ID          string  `json:"id"`
 	FullName    string  `json:"full_name"`

@@ -1,4 +1,11 @@
 {
     "http_server_port":8080,
-    "supported_symbols" :["BTC", "ETH"]
+    "supported_symbols" :["BTCUSD", "ETHBTC"],
+    "api_host" : "api.hitbtc.com",
+    "symbol_api_path": "/api/2/public/symbol",
+    "api_scheme": "https",
+    "ws_scheme" : "wss",
+    "ticker_method": "subscribeTicker",
+    "symbol_method": "getCurrency",
+    "wsapi_path":"/api/2/ws"
 }
